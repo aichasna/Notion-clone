@@ -5,9 +5,13 @@ import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
 import { cn } from "@/lib/utils"
 import { useMutation } from "convex/react"
-import { ChevronDown, ChevronRight, LucideIcon, Plus } from "lucide-react"
+import { ChevronDown, ChevronRight, LucideIcon, MoreHorizontal, Plus, Trash } from "lucide-react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { DropdownMenu, DropdownMenuTrigger,
+    DropdownMenuContent, DropdownMenuItem,
+    DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
+import { useUser } from "@clerk/clerk-react"
 
 interface ItemProps {
     id?:Id<"documents">
@@ -34,7 +38,22 @@ export const Item = ({
     onExpand,expanded
 }:ItemProps) => {
     const create = useMutation(api.documents.create)
+    const archive = useMutation(api.documents.archive)
     const router = useRouter()
+    const {user} = useUser()
+
+    const onArchive = (event:React.MouseEvent<HTMLDivElement,MouseEvent>) => {
+        event.stopPropagation()
+        if (!id) return
+        const promise = archive({id})
+        .then(() => router.push('/documents'))
+
+        toast.promise(promise,{
+            loading:"Moving to trash...",
+            success:"Note moved to trash!",
+            error:"Failed to archive note"
+        })
+    }
 
     const handleExpand = (event:React.MouseEvent<HTMLDivElement>) => {
         event.stopPropagation()
@@ -93,10 +112,33 @@ export const Item = ({
                 <span className="text-xs">⌘</span>K
                 </kbd>
             )}
-            <div className="opacity-0 group-hover:opacity-100 h-full ml-auto rounded-sm hover:bg-neutral-300 dark:hover:bg-neutral-600"
-            role="button" onClick={onCreate}>
-                <Plus className="w-4 h-4 text-muted-foreground"/>
-            </div>
+            {!!id && (
+                <div className="ml-auto flex items-center gap-x-2">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger onClick={(e) => e.stopPropagation()} asChild>
+                            <div role="button" className="opacity-0 group-hover:opacity-100 h-full ml-auto rounded-sm hover:bg-neutral-300 dark:hover:bg-neutral-600">
+                                <MoreHorizontal className="w-4 h-4 text-muted-foreground"/>
+                            </div>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-60" align="start" side="right" forceMount>
+                            <DropdownMenuItem onClick={onArchive}>
+                                <Trash className="w-4 h-4 mr-2"/>
+                                Delete
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator/>
+                            <div className="text-xs text-muted-foreground p-2">
+                                Last edited by: {user?.fullName}
+                            </div>
+
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    <div className="opacity-0 group-hover:opacity-100 h-full ml-auto rounded-sm hover:bg-neutral-300 dark:hover:bg-neutral-600"
+                    role="button" onClick={onCreate}>
+                        <Plus className="w-4 h-4 text-muted-foreground"/>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
